@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>灯又红了 · 一路上的红绿灯，换个速度或早几秒出门能不能一路绿</title>
+<meta name="description" content="把每天那条路上的红绿灯（位置、周期、绿灯多长、什么时候变绿）记下来，按你的速度推一遍：要停几次、路口一共耽误多久，开快开慢、早几秒晚几秒出门会不会一路绿。定时灯、匀速的粗算。">
+<style>
+  :root{--bg:#eceff0;--paper:#fcfcfb;--ink:#1f2529;--ink2:#4a545b;--mut:#80898f;--line:#d5dadd;--rule:#e7eaec;--red:#c8423a;--red2:#f3d3d0;--grn:#2f8a57;--grn2:#cfe9d9;--road:#3b4650;--hi:#fff4d6;--bad:#a8372b}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:22px 14px 72px}
+  h1{font-size:30px;line-height:1.25;margin:0 0 6px;letter-spacing:.03em}
+  .sub{color:var(--ink2);margin:0;font-size:15.5px}
+  .muted{color:var(--mut);font-size:13.5px}
+  .hide{display:none !important}
+  button,input{font:inherit}
+  button{cursor:pointer}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+  .chip{background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13.5px;color:var(--ink2)}
+  .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0;margin-top:14px}
+  .card h2{font-size:16px;margin:0 0 10px}
+  .big{font-size:22px;line-height:1.45;font-weight:700;margin:0 0 8px;overflow-wrap:anywhere}
+  .why{color:var(--ink2);font-size:14.5px;margin:0;overflow-wrap:anywhere}
+  .err{background:#fff4f2;border:1px solid #f0c9c2;color:var(--bad);border-radius:8px;padding:10px 14px}
+  .err ul{margin:4px 0 0;padding-left:20px}
+  .ts{width:100%;height:auto;display:block;margin-top:10px;background:#fff;border:1px solid var(--rule);border-radius:6px}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--ink2);margin-top:6px}
+  .legend i{display:inline-block;width:16px;height:4px;vertical-align:middle;margin-right:4px}
+  .acts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .act{text-align:left;background:#f1f7f3;border:1px solid var(--grn2);color:var(--ink);border-radius:8px;padding:7px 10px;font-size:14.5px;overflow-wrap:anywhere}
+  .act:hover{background:#e3f1e8}
+  .speeds{display:flex;gap:2px;align-items:flex-end;height:74px;margin-top:8px;overflow-x:auto;padding-bottom:2px}
+  .speeds button{flex:1 1 0;min-width:2px;border:0;padding:0;border-radius:2px 2px 0 0;background:var(--red2);position:relative}
+  .speeds button.z{background:var(--grn)}
+  .speeds button.cur{outline:2px solid var(--ink);outline-offset:1px}
+  .sAxis{display:flex;justify-content:space-between;font-size:12px;color:var(--mut)}
+  .grid2{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:16px;align-items:start}
+  .f{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:8px;align-items:center;margin:7px 0}
+  .f label{font-size:14px;color:var(--ink2)}
+  .f label small{display:block;color:var(--mut);font-size:11.5px;line-height:1.3}
+  input{width:100%;min-width:0;border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px 8px;font-size:16px;text-align:right}
+  input:focus{outline:2px solid var(--grn2);border-color:var(--grn)}
+  .bad{border-color:var(--bad)!important;background:#fff4f2!important}
+  table.lt{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+  table.lt th{font-weight:600;color:var(--ink2);font-size:12.5px;text-align:right;padding:4px 4px;border-bottom:1px solid var(--rule);white-space:nowrap}
+  table.lt td{padding:4px 4px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
+  table.lt th:first-child,table.lt td:first-child{text-align:left}
+  table.lt input{padding:3px 4px;text-align:right}
+  table.lt input.wp{width:70px} table.lt input.wn{width:56px}
+  table.lt td.res{font-size:13px}
+  table.lt td.res.r{color:var(--red)} table.lt td.res.g{color:var(--grn)}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+  .del{border:1px solid var(--line);background:#fff;border-radius:6px;padding:1px 7px;color:var(--mut)}
+  .tw{overflow-x:auto}
+  .tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .tools button,.addL{background:#fff;border:1px solid var(--line);border-radius:6px;padding:6px 12px;font-size:14px}
+  details{margin-top:16px}
+  details summary{cursor:pointer;font-weight:600}
+  details li{font-size:14px;color:var(--ink2);margin:4px 0}
+  @media (max-width:760px){
+    .grid2{grid-template-columns:minmax(0,1fr)}
+    h1{font-size:24px}
+    .big{font-size:19px}
+    .f{grid-template-columns:minmax(0,1fr) 104px}
+    table.lt{font-size:13px}
+    table.lt th,table.lt td{padding:4px 2px}
+    table.lt td.res .rt{display:none}
+    table.lt input{font-size:15px;padding:3px 2px} table.lt input.wp{width:54px} table.lt input.wn{width:40px} table.lt input.wn[data-k="off"]{width:46px}
+    table.lt th{font-size:11.5px;white-space:normal} .card{padding:12px}
+    .speeds{gap:1px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>灯又红了</h1>
+  <p class="sub">每天走同一条路，红绿灯总是一个接一个变红？把路上几个灯的周期和变绿时刻记下来，按你的速度推一遍：要停几次、耽误多久，开快开慢、早几秒晚几秒出门能不能一路绿。</p>
+  <div class="chips" id="presets"></div>
+  <p class="muted" id="presetNote"></p>
+
+  <div class="card">
+    <div id="errBox" class="err hide"></div>
+    <div id="okBox">
+      <p class="big" id="headline"></p>
+      <p class="why" id="why"></p>
+      <svg class="ts" id="ts" viewBox="0 0 720 340" role="img" aria-label="时间—距离图：每个灯一条红绿横条，线是你走的路"></svg>
+      <div class="legend"><span><i style="background:#3b4650"></i>你（横着走平 = 在路口停着）</span><span><i style="background:#2f8a57;height:2px;border-top:2px dashed #2f8a57;background:none"></i>一路不停里最快的速度</span><span><i style="background:#2f8a57"></i>绿灯</span><span><i style="background:#c8423a"></i>红灯</span></div>
+      <h2 style="margin-top:14px">改一样试试（点了直接改条件）</h2>
+      <div class="acts" id="acts"></div>
+      <h2 style="margin-top:16px">每个速度要停几次 <span class="muted" id="spNote"></span></h2>
+      <div class="speeds" id="speeds"></div>
+      <div class="sAxis" id="sAxis"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>这趟怎么走</h2>
+      <div class="f"><label for="name">路的名字</label><input id="name" maxlength="12" style="text-align:left"></div>
+      <div class="f"><label for="v">速度<small>km/h，平均巡航，最多一位小数</small></label><input id="v" inputmode="decimal"></div>
+      <div class="f"><label for="limit">最快能到<small>km/h，限速或你骑得动的上限，扫描用</small></label><input id="limit" inputmode="numeric"></div>
+      <div class="f"><label for="dep">出发时刻<small>秒表第几秒出门（0～3599）</small></label><input id="dep" inputmode="numeric"></div>
+      <div class="f"><label for="loss">起步损失<small>秒，变绿后多久才动起来</small></label><input id="loss" inputmode="numeric"></div>
+      <div class="f"><label for="dest">终点<small>米，从起点算</small></label><input id="dest" inputmode="numeric"></div>
+      <p class="muted" style="margin:8px 0 0">改完自动重算 <span id="saveTag"></span></p>
+    </div>
+    <div class="card">
+      <h2>路上的灯</h2>
+      <div class="tw"><table class="lt" id="lt"></table></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap"><button type="button" class="addL" id="addL">＋ 加一个灯</button><span class="muted" id="lightMsg"></span></div>
+      <p class="muted" style="margin:8px 0 0">变绿时刻：拿同一块秒表，在路口看到这个灯<b>变绿</b>那一刻记下读数（任意一次都行，超过一个周期会自动折算）。周期 = 两次变绿隔多少秒。</p>
+    </div>
+  </div>
+
+  <div class="tools">
+    <button type="button" id="dlPng">结果卡 PNG</button>
+    <button type="button" id="dlCsv">逐灯与速度 CSV</button>
+    <button type="button" id="dlMd">文字版 MD</button>
+    <button type="button" id="dlJson">备份 JSON</button>
+    <button type="button" id="impJson">导入备份</button>
+    <input type="file" id="impFile" accept=".json,application/json" class="hide">
+    <button type="button" id="reset">回到默认</button>
+  </div>
+  <p class="muted" id="impMsg"></p>
+
+  <details>
+    <summary>怎么算的、哪些不算</summary>
+    <ul>
+      <li>每个灯按固定周期循环：从变绿时刻起，绿灯 G 秒可以过，剩下的 C − G 秒不能过（黄灯算不算可以过，你自己决定填进 G 还是不填）。正好在变红那一刻到算红灯，正好在变绿那一刻到算绿灯。</li>
+      <li>两个灯之间按你填的速度匀速走，不算加速减速；碰到红灯就停，等变绿再过「起步损失」那么多秒才离开。</li>
+      <li>只有你一个人：不算前面排队的车、行人、左转待转。感应灯、按需灯、早晚高峰不同配时的灯都不适用；同一个灯早晚配时不一样，要分开记。</li>
+      <li>「每个速度要停几次」从 5 km/h 到「最快能到」每 1 km/h 推一遍，出发时刻不变。晚出门：在一个最长周期以内，晚多少秒出门到的时刻仍不晚于现在；早出门：早到的秒数比早出门的秒数还多（赶上了前一波绿灯）。</li>
+      <li>时间全按分数精确算（距离整米、速度一位小数），比较不受四舍五入影响；页面上的秒数四舍五入到 0.1 秒。</li>
+      <li>这是帮你看规律的粗算，不建议为赶绿灯超速或抢黄灯。默认数字是虚构示例，不是任何一条真实的路。</li>
+    </ul>
+  </details>
+</div>
+<script src="./core.js"></script>
+<script src="./ui.js"></script>
+</body>
+</html>
